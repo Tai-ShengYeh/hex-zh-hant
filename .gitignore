@@ -1,0 +1,6 @@
+*.bak-*
+*.partial
+install-windows.ps1.bak
+.DS_Store
+Thumbs.db
+i.ps1

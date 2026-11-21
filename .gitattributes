@@ -1,0 +1,8 @@
+# The transformer parses its dictionaries line by line, so the .ts files must
+# keep LF endings on every checkout: a stray CR would end up inside every
+# dictionary value and corrupt the converted text.
+* text=auto
+*.ts text eol=lf
+*.md text eol=lf
+LICENSE text eol=lf
+*.ps1 text eol=crlf
