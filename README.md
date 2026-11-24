@@ -81,6 +81,32 @@ hex history --raw --limit 1               # raw_text 是簡體，final_text 應�
 
 ⚠️ **不要用 Hex 的「試試」欄位驗證**：那個預覽只套用內建步驟，腳本轉換只在真的聽寫時執行。
 
+## 選用：Breeze ASR 25 語音模型
+
+[Breeze ASR 25](https://huggingface.co/MediaTek-Research/Breeze-ASR-25)（聯發科創新基地，Apache-2.0）是以 Whisper large-v2
+微調的台灣華語模型，**直接輸出繁體**，中英夾雜的句子辨識較好。Hex 的模型清單裡沒有它，要用 `hex model import` 匯入：
+
+```powershell
+# 先跑過 install-windows.ps1，再從一般的 PowerShell 視窗執行
+powershell -ExecutionPolicy Bypass -File .\install-breeze.ps1
+```
+
+腳本會從 [handy-computer/Breeze-ASR-25-gguf](https://huggingface.co/handy-computer/Breeze-ASR-25-gguf) 的固定版本下載
+Q8_0 檔（1.67 GB，可續傳），核對大小與 SHA-256 後匯入並切換過去，最後刪掉下載檔。Hex 裡已經有這個模型時不會重新下載。
+
+| 參數 | 說明 |
+|---|---|
+| `-Path <檔案>` | 用已經下載好的 GGUF，不再下載（一樣要通過 SHA-256 核對） |
+| `-NoSelect` | 只匯入，不切換目前使用的模型 |
+| `-KeepDownload` | 保留下載檔 |
+
+要留意：
+
+- 過程中需要約 3.5 GB 的可用空間（下載檔加上 Hex 自己的副本），完成後佔 1.7 GB。
+- **Breeze 不會加標點符號**，Hex 也沒有自動標點的設定；需要標點時改用 Qwen3-ASR（`hex model use qwen3_asr06_b`）。
+- `s2twp` 步驟可以留著：遇到繁體文字不會改動，換回輸出簡體的模型時仍然有效。
+- 切換回去：`hex model use <模型 id>`（`hex model list` 可查）；移除：`hex model remove custom-1650c163cd1623d1`。
+
 ## 已知限制
 
 - 轉換是**聽完之後**處理：即時字幕（Labs › Live text）的預覽仍是簡體，貼出的最終文字才是繁體。
