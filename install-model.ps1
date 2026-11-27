@@ -6,11 +6,11 @@
 
 .DESCRIPTION
   -Model auto (the default) looks at the computer. With at least 12 GB of system
-  memory and either
-    * a graphics card with at least 3 GB of its own memory, which Hex can use, or
-    * an x64 processor with at least 8 threads
-  it picks Qwen3-ASR 1.7B; otherwise (less memory, a smaller processor, or ARM64,
-  where 1.7B has not been tried) Qwen3-ASR 0.6B.
+  memory and a graphics card with at least 3 GB of its own memory, which Hex can
+  use, it picks Qwen3-ASR 1.7B. Otherwise (integrated graphics only, a small card,
+  or less memory) it picks Qwen3-ASR 0.6B: measured through Hex, 1.7B was about
+  8 times slower on an i5-11400H processor than on an RTX 3050 Ti, and about 75 %
+  slower than 0.6B on Radeon 760M integrated graphics.
   Run with -WhatIf to see the choice and the reasons without installing anything.
 
   The models:
@@ -88,7 +88,6 @@ foreach ($m in $Models.Values) {
 # Thresholds for -Model auto.
 $MinGpuBytes = 3GB    # Qwen3-ASR 1.7B Q8_0 is 2.2 GB and has to fit in the card's own memory
 $MinRamBytes = 12GB   # a "16 GB" computer reports a little less than 16 GB
-$MinThreads  = 8      # without a graphics card, 1.7B runs on the processor
 
 function Write-Step { param([string]$Message) Write-Host "==> $Message" -ForegroundColor Cyan }
 function Write-Ok   { param([string]$Message) Write-Host "    $Message" -ForegroundColor Green }
@@ -155,22 +154,13 @@ function Select-Model {
         if ($usable -and (-not $best -or $card.Bytes -gt $best.Bytes)) { $best = $card }
     }
 
-    $threads = [Environment]::ProcessorCount
-    Write-Ok "processor threads: $threads"
-
     if ($ram -lt $MinRamBytes) {
         return @{ Key = 'qwen-0.6b'; Why = ('less than {0} GB of system memory' -f ($MinRamBytes / 1GB)) }
     }
     if ($best) {
         return @{ Key = 'qwen-1.7b'; Why = "$($best.Name) and enough memory" }
     }
-    # Measured on an i5-11400H (12 threads) without the graphics card: 22 s of speech
-    # took about 4 s with 1.7B, model loading included. ARM64 has not been tried.
-    if ($env:PROCESSOR_ARCHITECTURE -eq 'AMD64' -and $threads -ge $MinThreads) {
-        return @{ Key = 'qwen-1.7b'; Why = "no usable graphics card, but $threads processor threads and enough memory" }
-    }
-    $why = if ($env:PROCESSOR_ARCHITECTURE -ne 'AMD64') { "$env:PROCESSOR_ARCHITECTURE processor without a usable graphics card (1.7B not tried there)" }
-           else { "no usable graphics card and fewer than $MinThreads processor threads" }
+    $why = 'no graphics card with {0} GB of its own memory that Hex can use' -f ($MinGpuBytes / 1GB)
     @{ Key = 'qwen-0.6b'; Why = $why }
 }
 
