@@ -81,31 +81,52 @@ hex history --raw --limit 1               # raw_text 是簡體，final_text 應�
 
 ⚠️ **不要用 Hex 的「試試」欄位驗證**：那個預覽只套用內建步驟，腳本轉換只在真的聽寫時執行。
 
-## 選用：Breeze ASR 25 語音模型
+## 選用：依電腦挑語音模型
 
-[Breeze ASR 25](https://huggingface.co/MediaTek-Research/Breeze-ASR-25)（聯發科創新基地，Apache-2.0）是以 Whisper large-v2
-微調的台灣華語模型，**直接輸出繁體**，中英夾雜的句子辨識較好。Hex 的模型清單裡沒有它，要用 `hex model import` 匯入：
+`install-model.ps1` 會看這台電腦的狀況，挑一個合適的語音模型裝進 Hex 並切換過去：
 
 ```powershell
-# 先跑過 install-windows.ps1，再從一般的 PowerShell 視窗執行
-powershell -ExecutionPolicy Bypass -File .\install-breeze.ps1
+# 先跑過 install-windows.ps1，再從一般的 PowerShell 視窗（開始功能表）執行
+powershell -ExecutionPolicy Bypass -File .\install-model.ps1 -WhatIf   # 只看會選哪個、為什麼，不安裝
+powershell -ExecutionPolicy Bypass -File .\install-model.ps1
 ```
 
-腳本會從 [handy-computer/Breeze-ASR-25-gguf](https://huggingface.co/handy-computer/Breeze-ASR-25-gguf) 的固定版本下載
-Q8_0 檔（1.67 GB，可續傳），核對大小與 SHA-256 後匯入並切換過去，最後刪掉下載檔。Hex 裡已經有這個模型時不會重新下載。
+自動選擇的規則（系統記憶體至少 12 GB 時）：
+
+| 電腦 | 選擇 |
+|---|---|
+| 有 Hex 能用、本身記憶體至少 3 GB 的顯示卡 | Qwen3-ASR 1.7B，用顯示卡跑 |
+| 沒有這種顯示卡，但 x64 處理器至少 8 執行緒 | Qwen3-ASR 1.7B，用處理器跑 |
+| 其他（記憶體不到 12 GB、處理器較小、ARM64） | Qwen3-ASR 0.6B |
+
+依據：在 i5-11400H（12 執行緒）＋ RTX 3050 Ti 4 GB 上，22 秒的中文語音只用處理器時，0.6B 約 4.4 秒、
+1.7B 約 3.9 秒（含載入模型），而 1.7B 認對了 0.6B 認錯的「外縣市」「提早」。實際聽寫時用顯示卡，
+30 秒語音約 1.4 秒。ARM64（例如 Snapdragon）還沒測過，所以先保守選 0.6B。
+
+| 模型 | `-Model` | 大小 | 說明 |
+|---|---|---|---|
+| Qwen3-ASR 0.6B | `qwen-0.6b` | 850 MB | Hex 內建，由 Hex 下載並驗證 |
+| Qwen3-ASR 1.7B | `qwen-1.7b` | 2.2 GB | 較準，中英夾雜表現好 |
+| Breeze ASR 25 | `breeze` | 1.7 GB | 台灣華語，直接輸出繁體，但**不加標點** |
+
+Qwen 輸出簡體並加標點，由 `s2twp` 轉成台灣繁體；Breeze 本身就是繁體，`s2twp` 不會改動它。
+
+1.7B 與 Breeze 不在 Hex 的清單裡：腳本從 [handy-computer](https://huggingface.co/handy-computer) 的 Hugging Face
+固定版本下載 Q8_0 檔（可續傳），核對大小與 SHA-256 後用 `hex model import` 匯入，再刪掉下載檔。
+Hex 裡已經有該模型時不會重新下載。
 
 | 參數 | 說明 |
 |---|---|
-| `-Path <檔案>` | 用已經下載好的 GGUF，不再下載（一樣要通過 SHA-256 核對） |
-| `-NoSelect` | 只匯入，不切換目前使用的模型 |
+| `-Model auto\|qwen-0.6b\|qwen-1.7b\|breeze` | 不用自動判斷，直接指定 |
+| `-WhatIf` | 只列出偵測結果與選擇，不做任何變更 |
+| `-Path <檔案>` | 用已經下載好的 GGUF（1.7B、Breeze），一樣要通過 SHA-256 核對 |
+| `-NoSelect` | 只安裝，不切換目前使用的模型 |
 | `-KeepDownload` | 保留下載檔 |
 
 要留意：
 
-- 過程中需要約 3.5 GB 的可用空間（下載檔加上 Hex 自己的副本），完成後佔 1.7 GB。
-- **Breeze 不會加標點符號**，Hex 也沒有自動標點的設定；需要標點時改用 Qwen3-ASR（`hex model use qwen3_asr06_b`）。
-- `s2twp` 步驟可以留著：遇到繁體文字不會改動，換回輸出簡體的模型時仍然有效。
-- 切換回去：`hex model use <模型 id>`（`hex model list` 可查）；移除：`hex model remove custom-1650c163cd1623d1`。
+- 下載匯入期間需要模型大小約兩倍的可用空間（下載檔加上 Hex 自己的副本）。
+- 切換：`hex model use <id>`（`hex model list` 可查）；移除匯入的模型：`hex model remove <id>`。
 
 ## 已知限制
 
