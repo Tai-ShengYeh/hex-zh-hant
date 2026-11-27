@@ -25,6 +25,8 @@ powershell -ExecutionPolicy Bypass -File .\install-windows.ps1
 2. `hex settings get ui_language` 輸出 `zh-Hant`
 3. `hex settings get dictation_processing.default_mode` 內含 `s2twp`
 
+要交給其他 AI agent（例如 Hermes Agent）代為安裝，可直接貼 [`AGENT-INSTALL.md`](AGENT-INSTALL.md) 裡的指令。
+
 ## 給人的安裝方式
 
 ```powershell
